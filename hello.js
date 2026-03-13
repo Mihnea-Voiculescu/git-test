@@ -1,6 +1,6 @@
-function greet() {
-  console.log("Hello from Mihnea");
+function greet(name) {
+  console.log("Hello from " + name);
   console.log("Claude Code is working");
 }
 
-greet();
+greet("Mihnea");
