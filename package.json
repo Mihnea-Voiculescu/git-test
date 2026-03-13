@@ -1,0 +1,21 @@
+{
+  "name": "git-test",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000g\u0000i\u0000t\u0000-\u0000t\u0000e\u0000s\u0000t\u0000\r\u0000 \u0000",
+  "main": "hello.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mihnea-Voiculescu/git-test.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Mihnea-Voiculescu/git-test/issues"
+  },
+  "homepage": "https://github.com/Mihnea-Voiculescu/git-test#readme"
+}
