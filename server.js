@@ -1,21 +1,23 @@
-const http = require('http');
+const express = require('express');
 
-const server = http.createServer((req, res) => {
-  if (req.url === '/') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Server is running');
-  } else if (req.url === '/hello') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Hello Mihnea');
-  } else if (req.url === '/status') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok' }));
-  } else {
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('Not Found');
-  }
+const app = express();
+
+app.get('/', (req, res) => {
+  res.type('text').send('Server is running');
 });
 
-server.listen(3000, () => {
+app.get('/hello', (req, res) => {
+  res.type('text').send('Hello Mihnea');
+});
+
+app.get('/status', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.use((req, res) => {
+  res.status(404).type('text').send('Not found');
+});
+
+app.listen(3000, () => {
   console.log('Server listening on port 3000');
 });
