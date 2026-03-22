@@ -324,10 +324,13 @@ export default function TendersPage() {
         ) : tenders.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
             <FileSearch className="h-7 w-7 text-slate-600" />
-            <p className="text-sm text-slate-400">No tenders match your filters</p>
-            {hasFilters && (
-              <button onClick={clearFilters} className="text-xs text-blue-400 hover:underline">Clear filters</button>
-            )}
+            <p className="text-sm text-slate-400">
+              {hasFilters ? 'No tenders match your filters' : 'No tenders yet'}
+            </p>
+            {hasFilters
+              ? <button onClick={clearFilters} className="text-xs text-blue-400 hover:underline">Clear filters</button>
+              : <p className="text-xs text-slate-600">Configure the webhook in Settings to import data from SEAP.</p>
+            }
           </div>
         ) : (
           <>

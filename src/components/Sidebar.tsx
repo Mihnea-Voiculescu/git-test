@@ -99,7 +99,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className={`flex items-center justify-between border-b ${BORDER_CLR} ${SIDEBAR_BG} px-4 py-3 lg:hidden`}>
+      <div className={`flex items-center justify-between border-b ${BORDER_CLR} ${SIDEBAR_BG} px-4 py-3 md:hidden`}>
         <span className="text-sm font-semibold text-white">LicitApp</span>
         <button onClick={() => setOpen(v => !v)} className="text-slate-400 hover:text-white">
           {open ? <X size={18} /> : <Menu size={18} />}
@@ -108,12 +108,12 @@ export default function Sidebar() {
 
       {/* Mobile overlay */}
       {open && (
-        <div className="fixed inset-0 z-20 bg-black/60 lg:hidden" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 z-20 bg-black/60 md:hidden" onClick={() => setOpen(false)} />
       )}
 
       {/* Mobile drawer */}
       <aside className={[
-        `fixed inset-y-0 left-0 z-30 flex w-60 flex-col ${SIDEBAR_BG} py-5 px-3 transition-transform duration-200 lg:hidden`,
+        `fixed inset-y-0 left-0 z-30 flex w-60 flex-col ${SIDEBAR_BG} py-5 px-3 transition-transform duration-200 md:hidden`,
         open ? 'translate-x-0' : '-translate-x-full',
       ].join(' ')}>
         <div className="mb-6 flex items-center justify-between px-3">
@@ -129,7 +129,7 @@ export default function Sidebar() {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className={`hidden w-60 shrink-0 flex-col ${SIDEBAR_BG} py-5 px-3 lg:flex`}>
+      <aside className={`hidden w-60 shrink-0 flex-col ${SIDEBAR_BG} py-5 px-3 md:flex`}>
         {logo}
         <div className="flex flex-1 flex-col justify-between overflow-y-auto">
           {nav}

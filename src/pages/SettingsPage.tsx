@@ -34,7 +34,7 @@ const ROLE_BADGE: Record<UserRole, string> = {
   viewer:   'bg-slate-500/20 text-slate-400',
 }
 
-const WEBHOOK_URL = 'https://your-project.supabase.co/functions/v1/ingest-tender'
+const WEBHOOK_URL = 'https://whtdnqebsiyiaaaieprf.supabase.co/functions/v1/ingest-tender'
 const API_KEY_PLACEHOLDER = 'sk-licit-••••••••••••••••••••••••••••••••'
 
 // =============================================================================

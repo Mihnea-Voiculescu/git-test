@@ -175,7 +175,7 @@ export default function DashboardPage() {
           <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
             <FileSearch className="h-7 w-7 text-slate-600" />
             <p className="text-sm text-slate-400">No tenders yet</p>
-            <p className="text-xs text-slate-600">Tenders you add will appear here.</p>
+            <p className="text-xs text-slate-600">Configure the webhook in Settings to import data from SEAP.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

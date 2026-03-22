@@ -350,6 +350,7 @@ export default function TenderDetailPage() {
 
   const [showSupplierModal, setShowSupplierModal] = useState(false)
   const [showBidModal, setShowBidModal]           = useState(false)
+  const [pendingStatus, setPendingStatus]         = useState<TenderStatus | null>(null)
 
   // ---------------------------------------------------------------------------
   // Data loaders (also used as callbacks after modal actions)
@@ -451,8 +452,13 @@ export default function TenderDetailPage() {
 
   async function handleStatusChange(newStatus: TenderStatus) {
     if (newStatus === 'withdrawn') {
-      if (!window.confirm('Are you sure you want to mark this tender as Withdrawn?')) return
+      setPendingStatus(newStatus)
+      return
     }
+    await commitStatusChange(newStatus)
+  }
+
+  async function commitStatusChange(newStatus: TenderStatus) {
     const { error } = await supabase
       .from('tenders')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
@@ -753,6 +759,38 @@ export default function TenderDetailPage() {
           onClose={() => setShowBidModal(false)}
           onAdded={loadBids}
         />
+      )}
+
+      {/* Withdrawn confirm dialog */}
+      {pendingStatus && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setPendingStatus(null)} />
+          <div className="relative z-10 w-full max-w-sm rounded-xl border border-[#334155] bg-[#1e293b] shadow-2xl">
+            <div className="px-6 py-5">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+                <div>
+                  <p className="text-sm font-medium text-white">Mark as Withdrawn?</p>
+                  <p className="mt-1 text-sm text-slate-400">This indicates the tender has been withdrawn. You can change the status again later if needed.</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-[#334155] px-6 py-4">
+              <button
+                onClick={() => setPendingStatus(null)}
+                className="rounded-md border border-[#334155] px-4 py-2 text-sm text-slate-400 transition hover:border-slate-500 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { commitStatusChange(pendingStatus); setPendingStatus(null) }}
+                className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600"
+              >
+                Yes, Withdraw
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
