@@ -15,7 +15,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setError('Email sau parolă incorectă.')
+      setError('Incorrect email or password.')
     }
     setLoading(false)
   }
@@ -25,13 +25,13 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-6 rounded-xl border border-border bg-card p-8 shadow-sm">
         <div className="space-y-1 text-center">
           <h1 className="text-2xl font-bold tracking-tight">LicitApp</h1>
-          <p className="text-sm text-muted-foreground">Conectează-te la contul tău</p>
+          <p className="text-sm text-muted-foreground">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
             <label htmlFor="email" className="text-sm font-medium">
-              Adresă email
+              Email address
             </label>
             <input
               id="email"
@@ -40,14 +40,14 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="nume@exemplu.ro"
+              placeholder="name@example.com"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
             />
           </div>
 
           <div className="space-y-1">
             <label htmlFor="password" className="text-sm font-medium">
-              Parolă
+              Password
             </label>
             <input
               id="password"
@@ -70,7 +70,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {loading ? 'Se procesează...' : 'Autentificare'}
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
       </div>
