@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Users, Webhook, Copy, Check, Lock,
@@ -125,6 +125,11 @@ export default function SettingsPage() {
   const [savingId,  setSavingId]  = useState<string | null>(null)
   const [showInviteNote, setShowInviteNote] = useState(false)
 
+  // Inline name editing
+  const [editingNameId,  setEditingNameId]  = useState<string | null>(null)
+  const [editingNameVal, setEditingNameVal] = useState('')
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
   // Admin guard
   useEffect(() => {
     if (role && role !== 'admin') navigate('/', { replace: true })
@@ -164,6 +169,35 @@ export default function SettingsPage() {
     } else {
       toast('Role updated.')
     }
+  }
+
+  function startEditName(p: Profile) {
+    setEditingNameId(p.id)
+    setEditingNameVal(p.full_name ?? '')
+    // Focus after render
+    setTimeout(() => nameInputRef.current?.focus(), 0)
+  }
+
+  async function commitNameEdit() {
+    if (!editingNameId) return
+    const newName = editingNameVal.trim() || null
+    const prev = profiles.find(p => p.id === editingNameId)?.full_name ?? null
+    if (newName === prev) { cancelNameEdit(); return }
+    setEditingNameId(null)
+    setProfiles(ps => ps.map(p => p.id === editingNameId ? { ...p, full_name: newName } : p))
+    const id = editingNameId
+    const { error } = await supabase.from('profiles').update({ full_name: newName }).eq('id', id)
+    if (error) {
+      setProfiles(ps => ps.map(p => p.id === id ? { ...p, full_name: prev } : p))
+      toast('Failed to update name.', 'error')
+    } else {
+      toast('Name updated.')
+    }
+  }
+
+  function cancelNameEdit() {
+    setEditingNameId(null)
+    setEditingNameVal('')
   }
 
   // ---------------------------------------------------------------------------
@@ -236,14 +270,34 @@ export default function SettingsPage() {
                       ].join(' ')}
                     >
                       <td className="px-6 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-white">
-                            {p.full_name || <span className="italic text-slate-500">No name set</span>}
-                          </span>
-                          {isCurrentUser && (
-                            <span className="inline-flex rounded-full bg-slate-700/50 px-2 py-0.5 text-xs text-slate-400">you</span>
-                          )}
-                        </div>
+                        {editingNameId === p.id ? (
+                          <input
+                            ref={nameInputRef}
+                            value={editingNameVal}
+                            onChange={e => setEditingNameVal(e.target.value)}
+                            onBlur={commitNameEdit}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') commitNameEdit()
+                              if (e.key === 'Escape') cancelNameEdit()
+                            }}
+                            placeholder="Display name"
+                            className="h-8 w-44 rounded-md border border-blue-500 bg-[#0f172a] px-2.5 text-sm text-white outline-none ring-1 ring-blue-500"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => startEditName(p)}
+                              className="group flex items-center gap-1.5 font-medium text-white hover:text-blue-400"
+                              title="Click to edit name"
+                            >
+                              {p.full_name || <span className="italic text-slate-500 group-hover:text-blue-400/70">No name set</span>}
+                              <span className="text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity text-xs">✎</span>
+                            </button>
+                            {isCurrentUser && (
+                              <span className="inline-flex rounded-full bg-slate-700/50 px-2 py-0.5 text-xs text-slate-400">you</span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-3.5 text-slate-400">{p.email}</td>
                       <td className="px-6 py-3.5">
