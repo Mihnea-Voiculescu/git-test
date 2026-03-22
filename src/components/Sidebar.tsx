@@ -22,14 +22,17 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard',        to: '/',                icon: <LayoutDashboard size={18} /> },
-  { label: 'Tenders',          to: '/tenders',         icon: <FileSearch size={18} /> },
-  { label: 'Suppliers',        to: '/suppliers',       icon: <Truck size={18} /> },
-  { label: 'Bids',             to: '/bids',            icon: <HandCoins size={18} /> },
-  { label: 'Categories',       to: '/categories',      icon: <Tags size={18} />,     adminOnly: true },
-  { label: 'Feature Requests', to: '/feature-requests',icon: <Lightbulb size={18} /> },
-  { label: 'Settings',         to: '/settings',        icon: <Settings size={18} />, adminOnly: true },
+  { label: 'Dashboard',        to: '/',                 icon: <LayoutDashboard size={16} /> },
+  { label: 'Tenders',          to: '/tenders',          icon: <FileSearch size={16} /> },
+  { label: 'Suppliers',        to: '/suppliers',        icon: <Truck size={16} /> },
+  { label: 'Bids',             to: '/bids',             icon: <HandCoins size={16} /> },
+  { label: 'Categories',       to: '/categories',       icon: <Tags size={16} />,      adminOnly: true },
+  { label: 'Feature Requests', to: '/feature-requests', icon: <Lightbulb size={16} /> },
+  { label: 'Settings',         to: '/settings',         icon: <Settings size={16} />,  adminOnly: true },
 ]
+
+const SIDEBAR_BG  = 'bg-[#0f172a]'
+const BORDER_CLR  = 'border-[#1e293b]'
 
 export default function Sidebar() {
   const { user, role, signOut } = useAuth()
@@ -46,7 +49,7 @@ export default function Sidebar() {
   const visibleItems = NAV_ITEMS.filter(item => !item.adminOnly || isAdmin)
 
   const nav = (
-    <nav className="flex flex-col gap-1">
+    <nav className="flex flex-col gap-0.5">
       {visibleItems.map(item => (
         <NavLink
           key={item.to}
@@ -54,12 +57,9 @@ export default function Sidebar() {
           end={item.to === '/'}
           onClick={() => setOpen(false)}
           className={({ isActive }) =>
-            [
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-              isActive
-                ? 'bg-white/10 text-white'
-                : 'text-slate-400 hover:bg-white/5 hover:text-white',
-            ].join(' ')
+            isActive
+              ? 'flex items-center gap-3 border-l-2 border-blue-500 bg-blue-500/10 py-2 pl-2.5 pr-3 text-sm font-medium text-blue-400 transition-colors'
+              : 'flex items-center gap-3 border-l-2 border-transparent py-2 pl-2.5 pr-3 text-sm font-medium text-slate-400 transition-colors hover:bg-white/[0.04] hover:text-slate-200'
           }
         >
           {item.icon}
@@ -70,52 +70,56 @@ export default function Sidebar() {
   )
 
   const userSection = (
-    <div className="border-t border-white/10 pt-4">
-      <div className="mb-3 flex items-center gap-3 px-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-xs font-semibold text-white uppercase">
+    <div className={`border-t ${BORDER_CLR} pt-4`}>
+      <div className="mb-2 flex items-center gap-3 px-3">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-xs font-semibold uppercase text-blue-400">
           {user?.email?.[0] ?? '?'}
         </div>
-        <p className="truncate text-sm text-slate-300">{user?.email}</p>
+        <p className="truncate text-xs text-slate-400">{user?.email}</p>
       </div>
       <button
         onClick={handleSignOut}
-        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
+        className="flex w-full items-center gap-3 border-l-2 border-transparent py-2 pl-2.5 pr-3 text-sm font-medium text-slate-500 transition-colors hover:bg-white/[0.04] hover:text-slate-300"
       >
-        <LogOut size={18} />
+        <LogOut size={16} />
         Logout
       </button>
+    </div>
+  )
+
+  const logo = (
+    <div className="mb-6 flex items-center gap-2 px-3 pt-1">
+      <div className="flex h-6 w-6 items-center justify-center rounded bg-blue-500">
+        <span className="text-xs font-bold text-white">L</span>
+      </div>
+      <span className="text-sm font-semibold tracking-tight text-white">LicitApp</span>
     </div>
   )
 
   return (
     <>
       {/* Mobile top bar */}
-      <div className="flex items-center justify-between border-b border-white/10 bg-slate-900 px-4 py-3 lg:hidden">
-        <span className="text-sm font-bold text-white">LicitApp</span>
+      <div className={`flex items-center justify-between border-b ${BORDER_CLR} ${SIDEBAR_BG} px-4 py-3 lg:hidden`}>
+        <span className="text-sm font-semibold text-white">LicitApp</span>
         <button onClick={() => setOpen(v => !v)} className="text-slate-400 hover:text-white">
-          {open ? <X size={20} /> : <Menu size={20} />}
+          {open ? <X size={18} /> : <Menu size={18} />}
         </button>
       </div>
 
-      {/* Mobile drawer overlay */}
+      {/* Mobile overlay */}
       {open && (
-        <div
-          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
-          onClick={() => setOpen(false)}
-        />
+        <div className="fixed inset-0 z-20 bg-black/60 lg:hidden" onClick={() => setOpen(false)} />
       )}
 
       {/* Mobile drawer */}
-      <aside
-        className={[
-          'fixed inset-y-0 left-0 z-30 flex w-64 flex-col bg-slate-900 p-4 transition-transform duration-200 lg:hidden',
-          open ? 'translate-x-0' : '-translate-x-full',
-        ].join(' ')}
-      >
-        <div className="mb-6 flex items-center justify-between">
-          <span className="text-sm font-bold text-white">LicitApp</span>
+      <aside className={[
+        `fixed inset-y-0 left-0 z-30 flex w-60 flex-col ${SIDEBAR_BG} py-5 px-3 transition-transform duration-200 lg:hidden`,
+        open ? 'translate-x-0' : '-translate-x-full',
+      ].join(' ')}>
+        <div className="mb-6 flex items-center justify-between px-3">
+          <span className="text-sm font-semibold text-white">LicitApp</span>
           <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white">
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
         <div className="flex flex-1 flex-col justify-between overflow-y-auto">
@@ -125,10 +129,8 @@ export default function Sidebar() {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col bg-slate-900 p-4 lg:flex">
-        <div className="mb-6 px-3">
-          <span className="text-sm font-bold text-white">LicitApp</span>
-        </div>
+      <aside className={`hidden w-60 shrink-0 flex-col ${SIDEBAR_BG} py-5 px-3 lg:flex`}>
+        {logo}
         <div className="flex flex-1 flex-col justify-between overflow-y-auto">
           {nav}
           {userSection}

@@ -1,21 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  FileSearch,
-  AlertTriangle,
-  MessageSquareDot,
-  Gavel,
-  Loader2,
-} from 'lucide-react'
+import { FileSearch, AlertTriangle, MessageSquareDot, Gavel, Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { STATUS_BADGE } from '../lib/badges'
+import type { TenderStatus } from '../lib/badges'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-type TenderStatus =
-  | 'new' | 'reviewed' | 'interested' | 'applied'
-  | 'won' | 'lost' | 'withdrawn' | 'expired'
 
 interface RecentTender {
   id: string
@@ -29,50 +21,31 @@ interface RecentTender {
 }
 
 interface Stats {
-  activeTenders: number
-  expiringSoon: number
+  activeTenders:    number
+  expiringSoon:     number
   pendingResponses: number
-  bidsThisMonth: number
+  bidsThisMonth:   number
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const RO_NUMBER = new Intl.NumberFormat('ro-RO', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
+const RO_NUMBER = new Intl.NumberFormat('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-function formatValue(value: number | null, currency: string) {
-  if (value == null) return '—'
-  return `${RO_NUMBER.format(value)} ${currency}`
+function formatValue(v: number | null, currency: string) {
+  return v == null ? '—' : `${RO_NUMBER.format(v)} ${currency}`
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 function deadlineColor(iso: string) {
   const days = (new Date(iso).getTime() - Date.now()) / 86_400_000
-  if (days < 3) return 'text-red-500 font-semibold'
-  if (days < 7) return 'text-orange-500 font-semibold'
-  return ''
-}
-
-const STATUS_BADGE: Record<TenderStatus, string> = {
-  new:        'bg-blue-100 text-blue-700',
-  reviewed:   'bg-slate-100 text-slate-600',
-  interested: 'bg-yellow-100 text-yellow-700',
-  applied:    'bg-purple-100 text-purple-700',
-  won:        'bg-green-100 text-green-700',
-  lost:       'bg-red-100 text-red-600',
-  withdrawn:  'bg-orange-100 text-orange-700',
-  expired:    'bg-slate-100 text-slate-400',
+  if (days < 3) return 'text-red-400 font-medium'
+  if (days < 7) return 'text-amber-400 font-medium'
+  return 'text-slate-400'
 }
 
 function truncate(str: string, max: number) {
@@ -84,29 +57,30 @@ function truncate(str: string, max: number) {
 // ---------------------------------------------------------------------------
 
 interface CardProps {
-  label: string
-  value: number
-  icon: React.ReactNode
+  label:   string
+  value:   number
+  icon:    React.ReactNode
   warning?: boolean
 }
 
 function SummaryCard({ label, value, icon, warning }: CardProps) {
+  const isWarning = warning && value > 0
   return (
     <div className={[
-      'rounded-xl border p-5 flex items-center gap-4',
-      warning && value > 0
-        ? 'border-orange-300 bg-orange-50'
-        : 'border-border bg-card',
+      'flex items-center gap-4 rounded-xl border p-5 transition-colors',
+      isWarning
+        ? 'border-amber-500/30 bg-amber-500/[0.07]'
+        : 'border-[#334155] bg-[#1e293b]',
     ].join(' ')}>
       <div className={[
-        'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg',
-        warning && value > 0 ? 'bg-orange-100 text-orange-600' : 'bg-muted text-muted-foreground',
+        'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+        isWarning ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.06] text-slate-400',
       ].join(' ')}>
         {icon}
       </div>
       <div>
-        <p className="text-2xl font-bold leading-none">{value}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{label}</p>
+        <p className="text-2xl font-bold leading-none text-white">{value}</p>
+        <p className="mt-1 text-xs text-slate-400">{label}</p>
       </div>
     </div>
   )
@@ -118,16 +92,16 @@ function SummaryCard({ label, value, icon, warning }: CardProps) {
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const [stats, setStats] = useState<Stats | null>(null)
+  const [stats,   setStats]   = useState<Stats | null>(null)
   const [tenders, setTenders] = useState<RecentTender[] | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error,   setError]   = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
       try {
-        const now = new Date()
-        const in7Days = new Date(Date.now() + 7 * 86_400_000).toISOString()
+        const now      = new Date()
+        const in7Days  = new Date(Date.now() + 7 * 86_400_000).toISOString()
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
         const [
@@ -135,49 +109,25 @@ export default function DashboardPage() {
           { count: expiringSoon },
           { count: pendingResponses },
           { count: bidsThisMonth },
-          { data: recentTenders, error: tendersError },
+          { data: recentTenders, error: tErr },
         ] = await Promise.all([
-          supabase
-            .from('tenders')
-            .select('*', { count: 'exact', head: true })
+          supabase.from('tenders').select('*', { count: 'exact', head: true })
             .not('status', 'in', '("expired","withdrawn")'),
-
-          supabase
-            .from('tenders')
-            .select('*', { count: 'exact', head: true })
-            .lte('deadline', in7Days)
-            .gte('deadline', now.toISOString())
+          supabase.from('tenders').select('*', { count: 'exact', head: true })
+            .lte('deadline', in7Days).gte('deadline', now.toISOString())
             .not('status', 'in', '("expired","withdrawn","won","lost")'),
-
-          supabase
-            .from('supplier_requests')
-            .select('*', { count: 'exact', head: true })
+          supabase.from('supplier_requests').select('*', { count: 'exact', head: true })
             .eq('response_status', 'pending'),
-
-          supabase
-            .from('bids')
-            .select('*', { count: 'exact', head: true })
+          supabase.from('bids').select('*', { count: 'exact', head: true })
             .gte('created_at', monthStart),
-
-          supabase
-            .from('tenders')
-            .select(`
-              id, title, contracting_authority,
-              estimated_value, currency, deadline, status,
-              tender_categories ( name )
-            `)
+          supabase.from('tenders')
+            .select('id, title, contracting_authority, estimated_value, currency, deadline, status, tender_categories(name)')
             .order('created_at', { ascending: false })
             .limit(10),
         ])
 
-        if (tendersError) throw tendersError
-
-        setStats({
-          activeTenders: activeTenders ?? 0,
-          expiringSoon: expiringSoon ?? 0,
-          pendingResponses: pendingResponses ?? 0,
-          bidsThisMonth: bidsThisMonth ?? 0,
-        })
+        if (tErr) throw tErr
+        setStats({ activeTenders: activeTenders ?? 0, expiringSoon: expiringSoon ?? 0, pendingResponses: pendingResponses ?? 0, bidsThisMonth: bidsThisMonth ?? 0 })
         setTenders((recentTenders as RecentTender[]) ?? [])
       } catch (e) {
         setError('Failed to load dashboard data.')
@@ -186,80 +136,58 @@ export default function DashboardPage() {
         setLoading(false)
       }
     }
-
     load()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-sm text-destructive">{error}</p>
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="flex h-64 items-center justify-center">
+      <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
+    </div>
+  )
+  if (error) return (
+    <div className="flex h-64 items-center justify-center">
+      <p className="text-sm text-red-400">{error}</p>
+    </div>
+  )
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard
-          label="Active Tenders"
-          value={stats!.activeTenders}
-          icon={<FileSearch size={20} />}
-        />
-        <SummaryCard
-          label="Expiring Soon"
-          value={stats!.expiringSoon}
-          icon={<AlertTriangle size={20} />}
-          warning
-        />
-        <SummaryCard
-          label="Pending Responses"
-          value={stats!.pendingResponses}
-          icon={<MessageSquareDot size={20} />}
-        />
-        <SummaryCard
-          label="Bids This Month"
-          value={stats!.bidsThisMonth}
-          icon={<Gavel size={20} />}
-        />
+      <div>
+        <h1 className="text-xl font-semibold text-white">Dashboard</h1>
+        <p className="mt-0.5 text-sm text-slate-400">Overview of your procurement activity</p>
       </div>
 
-      {/* Recent tenders */}
-      <div className="rounded-xl border border-border bg-card">
-        <div className="border-b border-border px-5 py-4">
-          <h2 className="font-semibold">Recent Tenders</h2>
+      {/* Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard label="Active Tenders"    value={stats!.activeTenders}    icon={<FileSearch size={18} />} />
+        <SummaryCard label="Expiring Soon"     value={stats!.expiringSoon}     icon={<AlertTriangle size={18} />} warning />
+        <SummaryCard label="Pending Responses" value={stats!.pendingResponses} icon={<MessageSquareDot size={18} />} />
+        <SummaryCard label="Bids This Month"   value={stats!.bidsThisMonth}    icon={<Gavel size={18} />} />
+      </div>
+
+      {/* Recent Tenders */}
+      <div className="rounded-xl border border-[#334155] bg-[#1e293b]">
+        <div className="border-b border-[#334155] px-6 py-4">
+          <h2 className="text-sm font-semibold text-white">Recent Tenders</h2>
         </div>
 
         {tenders!.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-            <FileSearch className="h-8 w-8 text-muted-foreground/40" />
-            <p className="text-sm font-medium text-muted-foreground">No tenders yet</p>
-            <p className="text-xs text-muted-foreground/60">
-              Tenders you add will appear here.
-            </p>
+            <FileSearch className="h-7 w-7 text-slate-600" />
+            <p className="text-sm text-slate-400">No tenders yet</p>
+            <p className="text-xs text-slate-600">Tenders you add will appear here.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
-                  <th className="px-5 py-3">Title</th>
-                  <th className="px-5 py-3">Authority</th>
-                  <th className="px-5 py-3 text-right">Est. Value</th>
-                  <th className="px-5 py-3">Deadline</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3">Category</th>
+                <tr className="border-b border-[#334155] bg-[#0f172a]/60">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Title</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Authority</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500">Est. Value</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Deadline</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Category</th>
                 </tr>
               </thead>
               <tbody>
@@ -268,35 +196,24 @@ export default function DashboardPage() {
                     key={t.id}
                     onClick={() => navigate(`/tenders/${t.id}`)}
                     className={[
-                      'cursor-pointer transition-colors hover:bg-muted/50',
-                      i !== tenders!.length - 1 ? 'border-b border-border' : '',
+                      'cursor-pointer transition-colors hover:bg-white/[0.03]',
+                      i % 2 === 1 ? 'bg-white/[0.015]' : '',
+                      i !== tenders!.length - 1 ? 'border-b border-[#334155]/60' : '',
                     ].join(' ')}
                   >
-                    <td className="px-5 py-3 font-medium">
-                      {truncate(t.title, 60)}
-                    </td>
-                    <td className="px-5 py-3 text-muted-foreground">
-                      {truncate(t.contracting_authority, 40)}
-                    </td>
-                    <td className="px-5 py-3 text-right tabular-nums text-muted-foreground">
-                      {formatValue(t.estimated_value, t.currency)}
-                    </td>
-                    <td className={`px-5 py-3 tabular-nums ${deadlineColor(t.deadline)}`}>
-                      {formatDate(t.deadline)}
-                    </td>
-                    <td className="px-5 py-3">
+                    <td className="px-6 py-3.5 font-medium text-white">{truncate(t.title, 55)}</td>
+                    <td className="px-6 py-3.5 text-slate-400">{truncate(t.contracting_authority, 35)}</td>
+                    <td className="px-6 py-3.5 text-right tabular-nums text-slate-400">{formatValue(t.estimated_value, t.currency)}</td>
+                    <td className={`px-6 py-3.5 tabular-nums ${deadlineColor(t.deadline)}`}>{formatDate(t.deadline)}</td>
+                    <td className="px-6 py-3.5">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[t.status]}`}>
                         {t.status}
                       </span>
                     </td>
-                    <td className="px-5 py-3">
-                      {t.tender_categories ? (
-                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                          {t.tender_categories.name}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                    <td className="px-6 py-3.5">
+                      {t.tender_categories
+                        ? <span className="inline-flex rounded-full bg-slate-700/50 px-2.5 py-0.5 text-xs font-medium text-slate-300">{t.tender_categories.name}</span>
+                        : <span className="text-slate-600">—</span>}
                     </td>
                   </tr>
                 ))}

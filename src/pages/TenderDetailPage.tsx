@@ -8,26 +8,16 @@ import {
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toaster'
+import { REQUEST_STATUS_BADGE } from '../lib/badges'
+import type { TenderStatus, RequestStatus, BidResult } from '../lib/badges'
 
 // =============================================================================
 // Types
 // =============================================================================
 
-type TenderStatus = 'new' | 'reviewed' | 'interested' | 'applied' | 'won' | 'lost' | 'withdrawn' | 'expired'
-type RequestStatus = 'pending' | 'replied' | 'quoted' | 'rejected' | 'no_response'
-type BidResult = 'pending' | 'won' | 'lost' | 'withdrawn'
-
 const ALL_STATUSES: TenderStatus[] = [
   'new', 'reviewed', 'interested', 'applied', 'won', 'lost', 'withdrawn', 'expired',
 ]
-
-const REQUEST_STATUS_BADGE: Record<RequestStatus, string> = {
-  pending:     'bg-yellow-100 text-yellow-700',
-  replied:     'bg-blue-100 text-blue-700',
-  quoted:      'bg-green-100 text-green-700',
-  rejected:    'bg-red-100 text-red-600',
-  no_response: 'bg-slate-100 text-slate-400',
-}
 
 interface TenderDetail {
   id: string
@@ -70,7 +60,11 @@ interface Bid {
 }
 
 interface Category { id: string; name: string }
-interface Supplier  { id: string; name: string }
+interface Supplier { id: string; name: string }
+
+// Shared input class
+const INPUT_CLS = 'h-9 rounded-md border border-[#334155] bg-[#0f172a] px-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+const TEXTAREA_CLS = 'w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
 
 // =============================================================================
 // Helpers
@@ -90,7 +84,7 @@ function deadlineInfo(iso: string) {
   const days = Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000)
   if (days < 0)  return { text: 'Expired',       color: 'text-slate-400' }
   if (days === 0) return { text: 'Due today',     color: 'text-red-500 font-semibold' }
-  const color = days < 3 ? 'text-red-500 font-semibold' : days < 7 ? 'text-orange-500 font-semibold' : 'text-muted-foreground'
+  const color = days < 3 ? 'text-red-400 font-medium' : days < 7 ? 'text-amber-400 font-medium' : 'text-slate-400'
   return { text: `${days} day${days !== 1 ? 's' : ''} remaining`, color }
 }
 
@@ -115,17 +109,17 @@ function generateMessage(t: TenderDetail) {
 function InfoField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="text-sm">{children}</div>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <div className="text-sm text-white">{children}</div>
     </div>
   )
 }
 
 function SectionCard({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div className="rounded-xl border border-[#334155] bg-[#1e293b] p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-semibold">{title}</h2>
+        <h2 className="text-sm font-semibold text-white">{title}</h2>
         {action}
       </div>
       {children}
@@ -151,7 +145,7 @@ function CollapsibleText({ text }: { text: string }) {
     <div>
       <p
         ref={ref}
-        className={['whitespace-pre-wrap text-sm text-muted-foreground', expanded ? '' : 'line-clamp-4'].join(' ')}
+        className={['whitespace-pre-wrap text-sm text-slate-400 leading-relaxed', expanded ? '' : 'line-clamp-4'].join(' ')}
       >
         {text}
       </p>
@@ -214,56 +208,37 @@ function SupplierModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-xl border border-border bg-card shadow-xl"
+        className="w-full max-w-lg rounded-xl border border-[#334155] bg-[#1e293b] shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 className="font-semibold">Send to Supplier</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
+        <div className="flex items-center justify-between border-b border-[#334155] px-5 py-4">
+          <h2 className="text-sm font-semibold text-white">Send to Supplier</h2>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300"><X size={16} /></button>
         </div>
 
         <div className="space-y-4 p-5">
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Supplier</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Supplier</label>
             {suppliers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No active suppliers found. Add one in the Suppliers page first.</p>
+              <p className="text-sm text-slate-500">No active suppliers found. Add one in the Suppliers page first.</p>
             ) : (
-              <select
-                value={supplierId}
-                onChange={e => setSupplierId(e.target.value)}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
+              <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className={`${INPUT_CLS} w-full`}>
                 {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             )}
           </div>
-
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Message</label>
-            <textarea
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              rows={11}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Message</label>
+            <textarea value={message} onChange={e => setMessage(e.target.value)} rows={11} className={`${TEXTAREA_CLS} leading-relaxed`} />
           </div>
-
-          <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+          <p className="rounded-md bg-[#0f172a] px-3 py-2 text-xs text-slate-500">
             Message will be sent via the automation system. This action only logs the request — no email is sent directly.
           </p>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border px-5 py-4">
-          <button onClick={onClose} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted">
-            Cancel
-          </button>
-          <button
-            onClick={handleSend}
-            disabled={sending || !supplierId}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
+        <div className="flex justify-end gap-2 border-t border-[#334155] px-5 py-4">
+          <button onClick={onClose} className="rounded-md border border-[#334155] px-4 py-2 text-sm text-slate-400 transition hover:border-slate-500 hover:text-white">Cancel</button>
+          <button onClick={handleSend} disabled={sending || !supplierId} className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600 disabled:opacity-50">
             {sending ? 'Logging…' : 'Send'}
           </button>
         </div>
@@ -311,72 +286,38 @@ function BidModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl border border-border bg-card shadow-xl"
+        className="w-full max-w-md rounded-xl border border-[#334155] bg-[#1e293b] shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 className="font-semibold">Add Bid</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
+        <div className="flex items-center justify-between border-b border-[#334155] px-5 py-4">
+          <h2 className="text-sm font-semibold text-white">Add Bid</h2>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300"><X size={16} /></button>
         </div>
 
         <div className="space-y-4 p-5">
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Company Name</label>
-            <input
-              type="text"
-              value={companyName}
-              onChange={e => setCompanyName(e.target.value)}
-              placeholder="Acme SRL"
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Company Name</label>
+            <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Acme SRL" className={`${INPUT_CLS} w-full`} />
           </div>
-
           <div className="flex gap-3">
-            <div className="flex-1 space-y-1">
-              <label className="text-sm font-medium">Bid Price</label>
-              <input
-                type="number"
-                value={bidPrice}
-                onChange={e => setBidPrice(e.target.value)}
-                placeholder="0.00"
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+            <div className="flex-1 space-y-1.5">
+              <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Bid Price</label>
+              <input type="number" value={bidPrice} onChange={e => setBidPrice(e.target.value)} placeholder="0.00" className={`${INPUT_CLS} w-full`} />
             </div>
-            <div className="w-24 space-y-1">
-              <label className="text-sm font-medium">Currency</label>
-              <input
-                type="text"
-                value={currency}
-                onChange={e => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+            <div className="w-24 space-y-1.5">
+              <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Currency</label>
+              <input type="text" value={currency} onChange={e => setCurrency(e.target.value.toUpperCase().slice(0, 3))} className={`${INPUT_CLS} w-full`} />
             </div>
           </div>
-
-          <div className="space-y-1">
-            <label className="text-sm font-medium">
-              Notes <span className="font-normal text-muted-foreground">(optional)</span>
-            </label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={3}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Notes <span className="normal-case text-slate-600">(optional)</span></label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} className={TEXTAREA_CLS} />
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border px-5 py-4">
-          <button onClick={onClose} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted">
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
+        <div className="flex justify-end gap-2 border-t border-[#334155] px-5 py-4">
+          <button onClick={onClose} className="rounded-md border border-[#334155] px-4 py-2 text-sm text-slate-400 transition hover:border-slate-500 hover:text-white">Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600 disabled:opacity-50">
             {saving ? 'Saving…' : 'Add Bid'}
           </button>
         </div>
@@ -551,7 +492,7 @@ export default function TenderDetailPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
       </div>
     )
   }
@@ -576,36 +517,36 @@ export default function TenderDetailPage() {
       {/* Back */}
       <button
         onClick={() => navigate('/tenders')}
-        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        className="flex items-center gap-1.5 text-sm text-slate-500 transition hover:text-slate-200"
       >
-        <ArrowLeft size={15} /> Back to Tenders
+        <ArrowLeft size={14} /> Back to Tenders
       </button>
 
       {/* Header */}
-      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+      <div className="rounded-xl border border-[#334155] bg-[#1e293b] p-6 space-y-4">
         <div>
-          <h1 className="text-xl font-bold leading-snug">{tender.title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{tender.contracting_authority}</p>
+          <h1 className="text-xl font-semibold leading-snug text-white">{tender.title}</h1>
+          <p className="mt-1 text-sm text-slate-400">{tender.contracting_authority}</p>
         </div>
         <div className="flex flex-wrap gap-6">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Status</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
             <select
               value={tender.status}
               onChange={e => handleStatusChange(e.target.value as TenderStatus)}
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={INPUT_CLS}
             >
               {ALL_STATUSES.map(s => (
                 <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
               ))}
             </select>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Category</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Category</label>
             <select
               value={tender.category_id ?? ''}
               onChange={e => handleCategoryChange(e.target.value)}
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={INPUT_CLS}
             >
               <option value="">— Unassigned —</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -624,7 +565,7 @@ export default function TenderDetailPage() {
             <span className="font-mono">{tender.cpv_code ?? '—'}</span>
           </InfoField>
           <InfoField label="External ID">
-            <span className="font-mono text-muted-foreground">{tender.external_id}</span>
+            <span className="font-mono text-slate-400">{tender.external_id}</span>
           </InfoField>
           <InfoField label="Publication Date">
             <span>{formatDate(tender.publication_date)}</span>
@@ -639,12 +580,12 @@ export default function TenderDetailPage() {
                 href={tender.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-primary hover:underline"
+                className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline"
               >
                 Open link <ExternalLink size={12} />
               </a>
             ) : (
-              <span className="text-muted-foreground">—</span>
+              <span className="text-slate-500">—</span>
             )}
           </InfoField>
         </div>
@@ -658,11 +599,11 @@ export default function TenderDetailPage() {
       )}
 
       {/* Notes */}
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div className="rounded-xl border border-[#334155] bg-[#1e293b] p-6">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-semibold">Notes</h2>
-          <span className={`flex items-center gap-1 text-xs text-green-600 transition-opacity duration-300 ${notesSaved ? 'opacity-100' : 'opacity-0'}`}>
-            <Save size={12} /> Saved
+          <h2 className="text-sm font-semibold text-white">Notes</h2>
+          <span className={`flex items-center gap-1 text-xs text-emerald-400 transition-opacity duration-300 ${notesSaved ? 'opacity-100' : 'opacity-0'}`}>
+            <Save size={11} /> Saved
           </span>
         </div>
         <textarea
@@ -670,9 +611,9 @@ export default function TenderDetailPage() {
           onChange={e => setNotes(e.target.value)}
           rows={4}
           placeholder="Add internal notes about this tender…"
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={TEXTAREA_CLS}
         />
-        {notesSaving && <p className="mt-1 text-xs text-muted-foreground">Saving…</p>}
+        {notesSaving && <p className="mt-1 text-xs text-slate-500">Saving…</p>}
       </div>
 
       {/* Supplier Outreach */}
@@ -681,19 +622,19 @@ export default function TenderDetailPage() {
         action={
           <button
             onClick={() => setShowSupplierModal(true)}
-            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="flex items-center gap-1.5 rounded-md bg-blue-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-600"
           >
             <Plus size={15} /> Send to Supplier
           </button>
         }
       >
         {requests.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No supplier requests for this tender yet.</p>
+          <p className="text-sm text-slate-500">No supplier requests for this tender yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
+                <tr className="border-b border-[#334155] bg-[#0f172a]/60 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                   <th className="px-3 py-2">Supplier</th>
                   <th className="px-3 py-2">Sent</th>
                   <th className="px-3 py-2">Status</th>
@@ -703,18 +644,18 @@ export default function TenderDetailPage() {
               </thead>
               <tbody>
                 {requests.map((r, i) => (
-                  <tr key={r.id} className={i !== requests.length - 1 ? 'border-b border-border' : ''}>
+                  <tr key={r.id} className={i !== requests.length - 1 ? 'border-b border-[#334155]/50' : ''}>
                     <td className="px-3 py-2 font-medium">{r.suppliers?.name ?? '—'}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{formatDate(r.sent_at)}</td>
+                    <td className="px-3 py-2 text-slate-400">{formatDate(r.sent_at)}</td>
                     <td className="px-3 py-2">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${REQUEST_STATUS_BADGE[r.response_status]}`}>
                         {r.response_status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-400">
                       {r.quoted_price != null ? formatValue(r.quoted_price, r.quoted_currency ?? '') : '—'}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">{r.response_notes ?? '—'}</td>
+                    <td className="px-3 py-2 text-slate-400">{r.response_notes ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -729,19 +670,19 @@ export default function TenderDetailPage() {
         action={
           <button
             onClick={() => setShowBidModal(true)}
-            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="flex items-center gap-1.5 rounded-md bg-blue-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-600"
           >
             <Plus size={15} /> Add Bid
           </button>
         }
       >
         {bids.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No bids recorded for this tender yet.</p>
+          <p className="text-sm text-slate-500">No bids recorded for this tender yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
+                <tr className="border-b border-[#334155] bg-[#0f172a]/60 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                   <th className="px-3 py-2">Company</th>
                   <th className="px-3 py-2 text-right">Bid Price</th>
                   <th className="px-3 py-2">Submitted</th>
@@ -752,15 +693,15 @@ export default function TenderDetailPage() {
               </thead>
               <tbody>
                 {bids.map((b, i) => (
-                  <tr key={b.id} className={i !== bids.length - 1 ? 'border-b border-border' : ''}>
+                  <tr key={b.id} className={i !== bids.length - 1 ? 'border-b border-[#334155]/50' : ''}>
                     <td className="px-3 py-2 font-medium">{b.company_name}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{formatValue(b.bid_price, b.bid_currency)}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{b.submitted_at ? formatDate(b.submitted_at) : '—'}</td>
+                    <td className="px-3 py-2 text-slate-400">{b.submitted_at ? formatDate(b.submitted_at) : '—'}</td>
                     <td className="px-3 py-2">
                       <select
                         value={b.result ?? ''}
                         onChange={e => handleBidResultChange(b.id, e.target.value as BidResult | '')}
-                        className="rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="rounded-md border border-[#334155] bg-[#0f172a] px-2 py-1 text-xs text-white outline-none transition focus:border-blue-500"
                       >
                         <option value="">—</option>
                         <option value="pending">Pending</option>
@@ -769,10 +710,10 @@ export default function TenderDetailPage() {
                         <option value="withdrawn">Withdrawn</option>
                       </select>
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-400">
                       {b.result_price != null ? formatValue(b.result_price, b.bid_currency) : '—'}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">{b.notes ?? '—'}</td>
+                    <td className="px-3 py-2 text-slate-400">{b.notes ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -787,10 +728,10 @@ export default function TenderDetailPage() {
           { title: 'Similar Tenders',    desc: 'AI-powered matching of related procurement opportunities.' },
           { title: 'Historical Winners', desc: 'Past bid results and winning companies for similar tenders.' },
         ].map(card => (
-          <div key={card.title} className="rounded-xl border border-dashed border-border bg-muted/30 p-6 opacity-50">
-            <p className="font-medium text-muted-foreground">{card.title}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{card.desc}</p>
-            <span className="mt-3 inline-block rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
+          <div key={card.title} className="rounded-xl border border-dashed border-[#334155]/50 bg-[#1e293b]/30 p-6 opacity-40">
+            <p className="text-sm font-medium text-slate-400">{card.title}</p>
+            <p className="mt-1 text-xs text-slate-600">{card.desc}</p>
+            <span className="mt-3 inline-block rounded-full bg-[#334155]/50 px-2.5 py-0.5 text-xs text-slate-500">
               In Development
             </span>
           </div>

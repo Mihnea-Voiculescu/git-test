@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  ChevronUp, ChevronDown, ChevronsUpDown,
-  FileSearch, Loader2, X, ChevronLeft, ChevronRight,
-} from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, FileSearch, Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { STATUS_BADGE } from '../lib/badges'
+import type { TenderStatus } from '../lib/badges'
 
 // ---------------------------------------------------------------------------
 // Constants & types
@@ -12,24 +11,12 @@ import { supabase } from '../lib/supabase'
 
 const PAGE_SIZE = 25
 
-type TenderStatus = 'new' | 'reviewed' | 'interested' | 'applied' | 'won' | 'lost' | 'withdrawn' | 'expired'
 type SortCol = 'title' | 'contracting_authority' | 'cpv_code' | 'estimated_value' | 'deadline' | 'status'
 type SortDir = 'asc' | 'desc'
 
 const ALL_STATUSES: TenderStatus[] = [
   'new', 'reviewed', 'interested', 'applied', 'won', 'lost', 'withdrawn', 'expired',
 ]
-
-const STATUS_BADGE: Record<TenderStatus, string> = {
-  new:        'bg-blue-100 text-blue-700',
-  reviewed:   'bg-slate-100 text-slate-600',
-  interested: 'bg-yellow-100 text-yellow-700',
-  applied:    'bg-purple-100 text-purple-700',
-  won:        'bg-green-100 text-green-700',
-  lost:       'bg-red-100 text-red-600',
-  withdrawn:  'bg-orange-100 text-orange-700',
-  expired:    'bg-slate-100 text-slate-400',
-}
 
 interface Category { id: string; name: string }
 
@@ -51,8 +38,8 @@ interface Tender {
 
 const RO_NUMBER = new Intl.NumberFormat('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-function formatValue(value: number | null, currency: string) {
-  return value == null ? '—' : `${RO_NUMBER.format(value)} ${currency}`
+function formatValue(v: number | null, currency: string) {
+  return v == null ? '—' : `${RO_NUMBER.format(v)} ${currency}`
 }
 
 function formatDate(iso: string) {
@@ -61,9 +48,9 @@ function formatDate(iso: string) {
 
 function deadlineColor(iso: string) {
   const days = (new Date(iso).getTime() - Date.now()) / 86_400_000
-  if (days < 3) return 'text-red-500 font-semibold'
-  if (days < 7) return 'text-orange-500 font-semibold'
-  return ''
+  if (days < 3) return 'text-red-400 font-medium'
+  if (days < 7) return 'text-amber-400 font-medium'
+  return 'text-slate-400'
 }
 
 function truncate(str: string, max: number) {
@@ -71,13 +58,19 @@ function truncate(str: string, max: number) {
 }
 
 // ---------------------------------------------------------------------------
+// Input class reused across filters
+// ---------------------------------------------------------------------------
+
+const INPUT_CLS = 'h-9 rounded-md border border-[#334155] bg-[#0f172a] px-3 text-sm text-white placeholder:text-slate-600 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+
+// ---------------------------------------------------------------------------
 // MultiSelect
 // ---------------------------------------------------------------------------
 
 interface MultiSelectProps {
-  options: { value: string; label: string }[]
-  selected: string[]
-  onChange: (next: string[]) => void
+  options:     { value: string; label: string }[]
+  selected:    string[]
+  onChange:    (next: string[]) => void
   placeholder: string
 }
 
@@ -102,25 +95,22 @@ function MultiSelect({ options, selected, onChange, placeholder }: MultiSelectPr
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="flex h-9 min-w-36 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm hover:bg-muted"
+        className="flex h-9 min-w-36 items-center justify-between gap-2 rounded-md border border-[#334155] bg-[#0f172a] px-3 text-sm text-white transition hover:border-slate-500"
       >
-        <span className={selected.length === 0 ? 'text-muted-foreground' : ''}>
+        <span className={selected.length === 0 ? 'text-slate-600' : 'text-white'}>
           {selected.length === 0 ? placeholder : `${selected.length} selected`}
         </span>
-        <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
+        <ChevronDown size={13} className="shrink-0 text-slate-500" />
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-20 mt-1 max-h-60 w-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+        <div className="absolute left-0 top-full z-20 mt-1 max-h-60 w-48 overflow-y-auto rounded-md border border-[#334155] bg-[#1e293b] shadow-xl">
           {options.map(opt => (
-            <label
-              key={opt.value}
-              className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
-            >
+            <label key={opt.value} className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:bg-white/[0.05]">
               <input
                 type="checkbox"
                 checked={selected.includes(opt.value)}
                 onChange={() => toggle(opt.value)}
-                className="accent-primary"
+                className="accent-blue-500"
               />
               {opt.label}
             </label>
@@ -132,15 +122,15 @@ function MultiSelect({ options, selected, onChange, placeholder }: MultiSelectPr
 }
 
 // ---------------------------------------------------------------------------
-// Sort header cell
+// Sort header
 // ---------------------------------------------------------------------------
 
 interface SortHeaderProps {
-  col: SortCol
-  label: string
-  current: SortCol
-  dir: SortDir
-  onSort: (col: SortCol) => void
+  col:       SortCol
+  label:     string
+  current:   SortCol
+  dir:       SortDir
+  onSort:    (col: SortCol) => void
   className?: string
 }
 
@@ -148,14 +138,14 @@ function SortHeader({ col, label, current, dir, onSort, className = '' }: SortHe
   const active = current === col
   return (
     <th
-      className={`cursor-pointer select-none px-4 py-3 text-left text-xs font-medium text-muted-foreground hover:text-foreground ${className}`}
+      className={`cursor-pointer select-none px-5 py-3 text-left text-xs font-medium uppercase tracking-wide transition-colors ${active ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'} ${className}`}
       onClick={() => onSort(col)}
     >
       <span className="flex items-center gap-1">
         {label}
         {active
-          ? dir === 'asc' ? <ChevronUp size={13} /> : <ChevronDown size={13} />
-          : <ChevronsUpDown size={13} className="opacity-40" />}
+          ? (dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)
+          : <ChevronsUpDown size={12} className="opacity-30" />}
       </span>
     </th>
   )
@@ -168,67 +158,48 @@ function SortHeader({ col, label, current, dir, onSort, className = '' }: SortHe
 export default function TendersPage() {
   const navigate = useNavigate()
 
-  // filter state
-  const [search, setSearch]               = useState('')
+  const [search,          setSearch]          = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [statusFilter, setStatusFilter]   = useState<TenderStatus[]>([])
-  const [categoryFilter, setCategoryFilter] = useState<string[]>([])
-  const [deadlineFrom, setDeadlineFrom]   = useState('')
-  const [deadlineTo, setDeadlineTo]       = useState('')
-  const [valueMin, setValueMin]           = useState('')
-  const [valueMax, setValueMax]           = useState('')
+  const [statusFilter,    setStatusFilter]    = useState<TenderStatus[]>([])
+  const [categoryFilter,  setCategoryFilter]  = useState<string[]>([])
+  const [deadlineFrom,    setDeadlineFrom]    = useState('')
+  const [deadlineTo,      setDeadlineTo]      = useState('')
+  const [valueMin,        setValueMin]        = useState('')
+  const [valueMax,        setValueMax]        = useState('')
 
-  // sort / page
   const [sortCol, setSortCol] = useState<SortCol>('deadline')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
-  const [page, setPage]       = useState(0)
+  const [page,    setPage]    = useState(0)
 
-  // data
-  const [tenders, setTenders]     = useState<Tender[]>([])
-  const [total, setTotal]         = useState(0)
+  const [tenders,    setTenders]    = useState<Tender[]>([])
+  const [total,      setTotal]      = useState(0)
   const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState<string | null>(null)
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState<string | null>(null)
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  // Debounce search
   useEffect(() => {
-    const t = setTimeout(() => {
-      setPage(0)
-      setDebouncedSearch(search)
-    }, 400)
+    const t = setTimeout(() => { setPage(0); setDebouncedSearch(search) }, 400)
     return () => clearTimeout(t)
   }, [search])
 
-  // Fetch categories once
   useEffect(() => {
-    supabase
-      .from('tender_categories')
-      .select('id, name')
-      .eq('is_active', true)
-      .order('name')
+    supabase.from('tender_categories').select('id, name').eq('is_active', true).order('name')
       .then(({ data }) => setCategories(data ?? []))
   }, [])
 
-  // Fetch tenders whenever filters / sort / page change
   useEffect(() => {
     async function fetch() {
-      setLoading(true)
-      setError(null)
+      setLoading(true); setError(null)
       try {
         let query = supabase
           .from('tenders')
-          .select(
-            'id, title, contracting_authority, cpv_code, estimated_value, currency, deadline, status, tender_categories(name)',
-            { count: 'exact' },
-          )
+          .select('id, title, contracting_authority, cpv_code, estimated_value, currency, deadline, status, tender_categories(name)', { count: 'exact' })
 
         if (debouncedSearch) {
           const s = debouncedSearch.replace(/[%_]/g, '\\$&')
-          query = query.or(
-            `title.ilike.%${s}%,description.ilike.%${s}%,contracting_authority.ilike.%${s}%`,
-          )
+          query = query.or(`title.ilike.%${s}%,description.ilike.%${s}%,contracting_authority.ilike.%${s}%`)
         }
         if (statusFilter.length > 0)   query = query.in('status', statusFilter)
         if (categoryFilter.length > 0) query = query.in('category_id', categoryFilter)
@@ -256,23 +227,14 @@ export default function TendersPage() {
   }, [debouncedSearch, statusFilter, categoryFilter, deadlineFrom, deadlineTo, valueMin, valueMax, sortCol, sortDir, page])
 
   function handleSort(col: SortCol) {
-    if (col === sortCol) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortCol(col)
-      setSortDir('asc')
-    }
+    if (col === sortCol) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
     setPage(0)
   }
 
   function clearFilters() {
-    setSearch('')
-    setStatusFilter([])
-    setCategoryFilter([])
-    setDeadlineFrom('')
-    setDeadlineTo('')
-    setValueMin('')
-    setValueMax('')
+    setSearch(''); setStatusFilter([]); setCategoryFilter([])
+    setDeadlineFrom(''); setDeadlineTo(''); setValueMin(''); setValueMax('')
     setPage(0)
   }
 
@@ -281,20 +243,23 @@ export default function TendersPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Tenders</h1>
+      <div>
+        <h1 className="text-xl font-semibold text-white">Tenders</h1>
+        <p className="mt-0.5 text-sm text-slate-400">Browse and manage procurement opportunities</p>
+      </div>
 
       {/* Search */}
       <div className="relative">
-        <FileSearch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <FileSearch size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search by title, authority, or description…"
-          className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={`${INPUT_CLS} w-full pl-9 pr-8`}
         />
         {search && (
-          <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+          <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
             <X size={14} />
           </button>
         )}
@@ -303,7 +268,7 @@ export default function TendersPage() {
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Status</p>
+          <p className="text-xs text-slate-500">Status</p>
           <MultiSelect
             options={ALL_STATUSES.map(s => ({ value: s, label: s }))}
             selected={statusFilter}
@@ -311,9 +276,8 @@ export default function TendersPage() {
             placeholder="All statuses"
           />
         </div>
-
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Category</p>
+          <p className="text-xs text-slate-500">Category</p>
           <MultiSelect
             options={categories.map(c => ({ value: c.id, label: c.name }))}
             selected={categoryFilter}
@@ -321,77 +285,48 @@ export default function TendersPage() {
             placeholder="All categories"
           />
         </div>
-
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Deadline from</p>
-          <input
-            type="date"
-            value={deadlineFrom}
-            onChange={e => { setDeadlineFrom(e.target.value); setPage(0) }}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <p className="text-xs text-slate-500">Deadline from</p>
+          <input type="date" value={deadlineFrom} onChange={e => { setDeadlineFrom(e.target.value); setPage(0) }} className={INPUT_CLS} />
         </div>
-
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Deadline to</p>
-          <input
-            type="date"
-            value={deadlineTo}
-            onChange={e => { setDeadlineTo(e.target.value); setPage(0) }}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <p className="text-xs text-slate-500">Deadline to</p>
+          <input type="date" value={deadlineTo} onChange={e => { setDeadlineTo(e.target.value); setPage(0) }} className={INPUT_CLS} />
         </div>
-
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Value min</p>
-          <input
-            type="number"
-            value={valueMin}
-            onChange={e => { setValueMin(e.target.value); setPage(0) }}
-            placeholder="0"
-            className="h-9 w-28 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <p className="text-xs text-slate-500">Value min</p>
+          <input type="number" value={valueMin} onChange={e => { setValueMin(e.target.value); setPage(0) }} placeholder="0" className={`${INPUT_CLS} w-28`} />
         </div>
-
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Value max</p>
-          <input
-            type="number"
-            value={valueMax}
-            onChange={e => { setValueMax(e.target.value); setPage(0) }}
-            placeholder="∞"
-            className="h-9 w-28 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <p className="text-xs text-slate-500">Value max</p>
+          <input type="number" value={valueMax} onChange={e => { setValueMax(e.target.value); setPage(0) }} placeholder="∞" className={`${INPUT_CLS} w-28`} />
         </div>
-
         {hasFilters && (
           <button
             onClick={clearFilters}
-            className="flex h-9 items-center gap-1.5 self-end rounded-md border border-border px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="flex h-9 items-center gap-1.5 self-end rounded-md border border-[#334155] px-3 text-sm text-slate-400 transition hover:border-slate-500 hover:text-slate-200"
           >
-            <X size={13} /> Clear filters
+            <X size={13} /> Clear
           </button>
         )}
       </div>
 
       {/* Table card */}
-      <div className="rounded-xl border border-border bg-card">
+      <div className="rounded-xl border border-[#334155] bg-[#1e293b]">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
           </div>
         ) : error ? (
           <div className="flex h-64 items-center justify-center">
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-red-400">{error}</p>
           </div>
         ) : tenders.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
-            <FileSearch className="h-8 w-8 text-muted-foreground/40" />
-            <p className="text-sm font-medium text-muted-foreground">No tenders match your filters</p>
+            <FileSearch className="h-7 w-7 text-slate-600" />
+            <p className="text-sm text-slate-400">No tenders match your filters</p>
             {hasFilters && (
-              <button onClick={clearFilters} className="text-xs text-primary hover:underline">
-                Clear filters
-              </button>
+              <button onClick={clearFilters} className="text-xs text-blue-400 hover:underline">Clear filters</button>
             )}
           </div>
         ) : (
@@ -399,14 +334,14 @@ export default function TendersPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border">
-                    <SortHeader col="title"                  label="Title"           current={sortCol} dir={sortDir} onSort={handleSort} />
-                    <SortHeader col="contracting_authority"  label="Authority"        current={sortCol} dir={sortDir} onSort={handleSort} />
-                    <SortHeader col="cpv_code"               label="CPV Code"         current={sortCol} dir={sortDir} onSort={handleSort} />
-                    <SortHeader col="estimated_value"        label="Est. Value"       current={sortCol} dir={sortDir} onSort={handleSort} className="text-right" />
-                    <SortHeader col="deadline"               label="Deadline"         current={sortCol} dir={sortDir} onSort={handleSort} />
-                    <SortHeader col="status"                 label="Status"           current={sortCol} dir={sortDir} onSort={handleSort} />
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Category</th>
+                  <tr className="border-b border-[#334155] bg-[#0f172a]/60">
+                    <SortHeader col="title"                 label="Title"     current={sortCol} dir={sortDir} onSort={handleSort} />
+                    <SortHeader col="contracting_authority" label="Authority"  current={sortCol} dir={sortDir} onSort={handleSort} />
+                    <SortHeader col="cpv_code"              label="CPV"        current={sortCol} dir={sortDir} onSort={handleSort} />
+                    <SortHeader col="estimated_value"       label="Est. Value" current={sortCol} dir={sortDir} onSort={handleSort} className="text-right" />
+                    <SortHeader col="deadline"              label="Deadline"   current={sortCol} dir={sortDir} onSort={handleSort} />
+                    <SortHeader col="status"                label="Status"     current={sortCol} dir={sortDir} onSort={handleSort} />
+                    <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Category</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -415,28 +350,25 @@ export default function TendersPage() {
                       key={t.id}
                       onClick={() => navigate(`/tenders/${t.id}`)}
                       className={[
-                        'cursor-pointer transition-colors hover:bg-muted/50',
-                        i !== tenders.length - 1 ? 'border-b border-border' : '',
+                        'cursor-pointer transition-colors hover:bg-white/[0.04]',
+                        i % 2 === 1 ? 'bg-white/[0.015]' : '',
+                        i !== tenders.length - 1 ? 'border-b border-[#334155]/50' : '',
                       ].join(' ')}
                     >
-                      <td className="px-4 py-3 font-medium">{truncate(t.title, 55)}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{truncate(t.contracting_authority, 35)}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{t.cpv_code ?? '—'}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                        {formatValue(t.estimated_value, t.currency)}
-                      </td>
-                      <td className={`px-4 py-3 tabular-nums ${deadlineColor(t.deadline)}`}>
-                        {formatDate(t.deadline)}
-                      </td>
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-3.5 font-medium text-white">{truncate(t.title, 52)}</td>
+                      <td className="px-5 py-3.5 text-slate-400">{truncate(t.contracting_authority, 32)}</td>
+                      <td className="px-5 py-3.5 font-mono text-slate-500">{t.cpv_code ?? '—'}</td>
+                      <td className="px-5 py-3.5 text-right tabular-nums text-slate-400">{formatValue(t.estimated_value, t.currency)}</td>
+                      <td className={`px-5 py-3.5 tabular-nums ${deadlineColor(t.deadline)}`}>{formatDate(t.deadline)}</td>
+                      <td className="px-5 py-3.5">
                         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[t.status]}`}>
                           {t.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-3.5">
                         {t.tender_categories
-                          ? <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">{t.tender_categories.name}</span>
-                          : <span className="text-muted-foreground">—</span>}
+                          ? <span className="inline-flex rounded-full bg-slate-700/50 px-2.5 py-0.5 text-xs font-medium text-slate-300">{t.tender_categories.name}</span>
+                          : <span className="text-slate-600">—</span>}
                       </td>
                     </tr>
                   ))}
@@ -445,24 +377,24 @@ export default function TendersPage() {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between border-t border-border px-4 py-3">
-              <p className="text-sm text-muted-foreground">
+            <div className="flex items-center justify-between border-t border-[#334155] px-5 py-3">
+              <p className="text-xs text-slate-500">
                 {total} result{total !== 1 ? 's' : ''} · Page {page + 1} of {totalPages}
               </p>
               <div className="flex items-center gap-2">
                 <button
                   disabled={page === 0}
                   onClick={() => setPage(p => p - 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex h-8 w-8 items-center justify-center rounded-md border border-[#334155] text-slate-400 transition hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
                 >
-                  <ChevronLeft size={15} />
+                  <ChevronLeft size={14} />
                 </button>
                 <button
                   disabled={page >= totalPages - 1}
                   onClick={() => setPage(p => p + 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex h-8 w-8 items-center justify-center rounded-md border border-[#334155] text-slate-400 transition hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
                 >
-                  <ChevronRight size={15} />
+                  <ChevronRight size={14} />
                 </button>
               </div>
             </div>
