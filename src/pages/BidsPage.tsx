@@ -16,10 +16,11 @@ import type { BidResult } from '../lib/badges'
 interface BidRow {
   id: string
   created_at: string
+  submitted_at: string | null
   company_name: string
   bid_price: number
-  currency: string
-  result: BidResult
+  bid_currency: string
+  result: BidResult | null
   result_price: number | null
   notes: string | null
   tenders: { id: string; title: string } | null
@@ -203,7 +204,7 @@ export default function BidsPage() {
       try {
         const { data, error: qErr } = await supabase
           .from('bids')
-          .select('id, created_at, company_name, bid_price, currency, result, result_price, notes, tenders(id, title)')
+          .select('id, created_at, submitted_at, company_name, bid_price, bid_currency, result, result_price, notes, tenders(id, title)')
           .order('created_at', { ascending: false })
 
         if (qErr) throw qErr
@@ -249,7 +250,7 @@ export default function BidsPage() {
   // ---------------------------------------------------------------------------
 
   const filtered = allBids.filter(b => {
-    if (resultFilter.length && !resultFilter.includes(b.result)) return false
+    if (resultFilter.length && !resultFilter.includes(b.result as BidResult)) return false
     if (companyFilter && b.company_name !== companyFilter) return false
     if (dateFrom && b.created_at < dateFrom) return false
     if (dateTo   && b.created_at > dateTo + 'T23:59:59') return false
@@ -268,7 +269,7 @@ export default function BidsPage() {
       case 'tender':      return dir * (a.tenders?.title ?? '').localeCompare(b.tenders?.title ?? '')
       case 'company':     return dir * a.company_name.localeCompare(b.company_name)
       case 'bid_price':   return dir * (a.bid_price - b.bid_price)
-      case 'result':      return dir * a.result.localeCompare(b.result)
+      case 'result':      return dir * (a.result ?? '').localeCompare(b.result ?? '')
       case 'result_price':return dir * ((a.result_price ?? -Infinity) - (b.result_price ?? -Infinity))
       case 'margin': {
         const ma = calcMargin(a.bid_price, a.result_price) ?? -Infinity
@@ -447,17 +448,17 @@ export default function BidsPage() {
                           )}
                         </td>
                         <td className="px-5 py-3.5 text-slate-400">{b.company_name}</td>
-                        <td className="px-5 py-3.5 text-right tabular-nums text-slate-400">{fmtPrice(b.bid_price, b.currency)}</td>
+                        <td className="px-5 py-3.5 text-right tabular-nums text-slate-400">{fmtPrice(b.bid_price, b.bid_currency)}</td>
                         <td className="px-5 py-3.5">
-                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${BID_RESULT_BADGE[b.result]}`}>
-                            {b.result}
-                          </span>
+                          {b.result
+                            ? <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${BID_RESULT_BADGE[b.result]}`}>{b.result}</span>
+                            : <span className="text-slate-600">—</span>}
                         </td>
-                        <td className="px-5 py-3.5 text-right tabular-nums text-slate-400">{fmtPrice(b.result_price, b.currency)}</td>
+                        <td className="px-5 py-3.5 text-right tabular-nums text-slate-400">{fmtPrice(b.result_price, b.bid_currency)}</td>
                         <td className={`px-5 py-3.5 text-right tabular-nums font-medium ${marginCls}`}>
                           {margin == null ? '—' : `${margin >= 0 ? '+' : ''}${margin.toFixed(1)}%`}
                         </td>
-                        <td className="px-5 py-3.5 tabular-nums text-slate-400">{fmtDate(b.created_at)}</td>
+                        <td className="px-5 py-3.5 tabular-nums text-slate-400">{fmtDate(b.submitted_at ?? b.created_at)}</td>
                         <td className="px-5 py-3.5 text-slate-400">
                           {b.notes
                             ? <span title={b.notes}>{b.notes.length > 40 ? b.notes.slice(0, 40) + '…' : b.notes}</span>
