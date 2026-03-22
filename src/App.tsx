@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import TendersPage from './pages/TendersPage'
 import TenderDetailPage from './pages/TenderDetailPage'
 import SuppliersPage from './pages/SuppliersPage'
+import SupplierDetailPage from './pages/SupplierDetailPage'
 import BidsPage from './pages/BidsPage'
 import CategoriesPage from './pages/CategoriesPage'
 import FeatureRequestsPage from './pages/FeatureRequestsPage'
@@ -52,6 +53,7 @@ function AppRoutes() {
         <Route path="/tenders"            element={<TendersPage />} />
         <Route path="/tenders/:id"        element={<TenderDetailPage />} />
         <Route path="/suppliers"          element={<SuppliersPage />} />
+        <Route path="/suppliers/:id"      element={<SupplierDetailPage />} />
         <Route path="/bids"               element={<BidsPage />} />
         <Route path="/categories"         element={<CategoriesPage />} />
         <Route path="/feature-requests"   element={<FeatureRequestsPage />} />
