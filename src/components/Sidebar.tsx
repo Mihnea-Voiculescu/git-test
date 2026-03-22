@@ -32,12 +32,11 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 export default function Sidebar() {
-  const { user, signOut } = useAuth()
+  const { user, role, signOut } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
 
-  // No profiles table yet — default to showing all items
-  const isAdmin = true
+  const isAdmin = role === 'admin'
 
   async function handleSignOut() {
     await signOut()
