@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ToastProvider } from './components/Toaster'
 import AppLayout from './components/AppLayout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import TendersPage from './pages/TendersPage'
+import TenderDetailPage from './pages/TenderDetailPage'
 import SuppliersPage from './pages/SuppliersPage'
 import BidsPage from './pages/BidsPage'
 import CategoriesPage from './pages/CategoriesPage'
@@ -46,13 +48,14 @@ function AppRoutes() {
         element={session ? <Navigate to="/" replace /> : <LoginPage />}
       />
       <Route element={<ProtectedLayout />}>
-        <Route path="/"                 element={<DashboardPage />} />
-        <Route path="/tenders"          element={<TendersPage />} />
-        <Route path="/suppliers"        element={<SuppliersPage />} />
-        <Route path="/bids"             element={<BidsPage />} />
-        <Route path="/categories"       element={<CategoriesPage />} />
-        <Route path="/feature-requests" element={<FeatureRequestsPage />} />
-        <Route path="/settings"         element={<SettingsPage />} />
+        <Route path="/"                   element={<DashboardPage />} />
+        <Route path="/tenders"            element={<TendersPage />} />
+        <Route path="/tenders/:id"        element={<TenderDetailPage />} />
+        <Route path="/suppliers"          element={<SuppliersPage />} />
+        <Route path="/bids"               element={<BidsPage />} />
+        <Route path="/categories"         element={<CategoriesPage />} />
+        <Route path="/feature-requests"   element={<FeatureRequestsPage />} />
+        <Route path="/settings"           element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -63,7 +66,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   )
