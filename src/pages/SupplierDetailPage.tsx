@@ -34,7 +34,7 @@ interface RequestRow {
   response_status: RequestStatus
   quoted_price: number | null
   currency: string
-  tenders: { id: string; title: string } | null
+  tenders: { id: string; title: string }[] | null
 }
 
 interface FormData {
@@ -541,7 +541,7 @@ export default function SupplierDetailPage() {
                 {requests.map((r, i) => (
                   <tr
                     key={r.id}
-                    onClick={() => r.tenders && navigate(`/tenders/${r.tenders.id}`)}
+                    onClick={() => r.tenders && navigate(`/tenders/${r.tenders[0].id}`)}
                     className={[
                       r.tenders ? 'cursor-pointer hover:bg-white/[0.04]' : '',
                       'transition-colors',
@@ -551,7 +551,7 @@ export default function SupplierDetailPage() {
                   >
                     <td className="px-6 py-3.5 font-medium text-white">
                       {r.tenders ? (
-                        <span className="hover:text-blue-400 hover:underline">{r.tenders.title}</span>
+                        <span className="hover:text-blue-400 hover:underline">{r.tenders[0].title}</span>
                       ) : (
                         <span className="text-slate-500 italic">Tender removed</span>
                       )}

@@ -19,7 +19,7 @@ interface FeatureRequest {
   status: Status
   created_at: string
   requested_by: string | null
-  profiles: { full_name: string | null } | null
+  profiles: { full_name: string | null }[] | null
 }
 
 interface FormData {
@@ -231,7 +231,7 @@ function DetailModal({ request, isAdmin, onClose, onSave, saving }: {
           : <p className="text-sm italic text-slate-600">No description provided.</p>}
 
         <div className="space-y-1 border-t border-[#334155] pt-4 text-xs text-slate-500">
-          <p>Requested by: <span className="text-slate-400">{request.profiles?.full_name ?? 'Unknown'}</span></p>
+          <p>Requested by: <span className="text-slate-400">{request.profiles?.[0]?.full_name ?? 'Unknown'}</span></p>
           <p>Created: <span className="text-slate-400">{fmtDate(request.created_at)}</span></p>
         </div>
       </div>
@@ -289,7 +289,7 @@ function KanbanCard({ request, isAdmin, isDragging, onOpen, onDragStart, onDragE
           {capitalize(request.priority)}
         </span>
         <div className="text-right">
-          <p className="text-xs text-slate-600">{request.profiles?.full_name ?? 'Unknown'}</p>
+          <p className="text-xs text-slate-600">{request.profiles?.[0]?.full_name ?? 'Unknown'}</p>
           <p className="text-xs text-slate-700">{fmtDate(request.created_at)}</p>
         </div>
       </div>

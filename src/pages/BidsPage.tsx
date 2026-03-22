@@ -23,7 +23,7 @@ interface BidRow {
   result: BidResult | null
   result_price: number | null
   notes: string | null
-  tenders: { id: string; title: string } | null
+  tenders: { id: string; title: string }[] | null
 }
 
 type SortCol = 'tender' | 'company' | 'bid_price' | 'result' | 'result_price' | 'margin' | 'created_at'
@@ -256,7 +256,7 @@ export default function BidsPage() {
     if (dateTo   && b.created_at > dateTo + 'T23:59:59') return false
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase()
-      const titleMatch   = b.tenders?.title?.toLowerCase().includes(q) ?? false
+      const titleMatch   = b.tenders?.[0]?.title?.toLowerCase().includes(q) ?? false
       const companyMatch = b.company_name.toLowerCase().includes(q)
       if (!titleMatch && !companyMatch) return false
     }
@@ -266,7 +266,7 @@ export default function BidsPage() {
   const sorted = [...filtered].sort((a, b) => {
     const dir = sort.dir === 'asc' ? 1 : -1
     switch (sort.col) {
-      case 'tender':      return dir * (a.tenders?.title ?? '').localeCompare(b.tenders?.title ?? '')
+      case 'tender':      return dir * (a.tenders?.[0]?.title ?? '').localeCompare(b.tenders?.[0]?.title ?? '')
       case 'company':     return dir * a.company_name.localeCompare(b.company_name)
       case 'bid_price':   return dir * (a.bid_price - b.bid_price)
       case 'result':      return dir * (a.result ?? '').localeCompare(b.result ?? '')
@@ -437,11 +437,11 @@ export default function BidsPage() {
                         <td className="px-5 py-3.5">
                           {b.tenders ? (
                             <button
-                              onClick={() => navigate(`/tenders/${b.tenders!.id}`)}
+                              onClick={() => navigate(`/tenders/${b.tenders![0].id}`)}
                               className="max-w-[200px] truncate font-medium text-white hover:text-blue-400 hover:underline text-left"
-                              title={b.tenders.title}
+                              title={b.tenders[0].title}
                             >
-                              {b.tenders.title}
+                              {b.tenders[0].title}
                             </button>
                           ) : (
                             <span className="italic text-slate-500">Tender removed</span>

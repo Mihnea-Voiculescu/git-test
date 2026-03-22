@@ -29,7 +29,7 @@ interface Tender {
   currency: string
   deadline: string
   status: TenderStatus
-  tender_categories: { name: string } | null
+  tender_categories: { name: string }[] | null
 }
 
 // ---------------------------------------------------------------------------
@@ -370,7 +370,7 @@ export default function TendersPage() {
                       </td>
                       <td className="px-5 py-3.5">
                         {t.tender_categories
-                          ? <span className="inline-flex rounded-full bg-slate-700/50 px-2.5 py-0.5 text-xs font-medium text-slate-300">{t.tender_categories.name}</span>
+                          ? <span className="inline-flex rounded-full bg-slate-700/50 px-2.5 py-0.5 text-xs font-medium text-slate-300">{t.tender_categories[0]?.name}</span>
                           : <span className="text-slate-600">—</span>}
                       </td>
                     </tr>

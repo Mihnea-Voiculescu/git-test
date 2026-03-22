@@ -34,7 +34,7 @@ interface TenderDetail {
   status: TenderStatus
   category_id: string | null
   notes: string | null
-  tender_categories: { id: string; name: string } | null
+  tender_categories: { id: string; name: string }[] | null
 }
 
 interface SupplierRequest {
@@ -44,7 +44,7 @@ interface SupplierRequest {
   response_notes: string | null
   quoted_price: number | null
   quoted_currency: string | null
-  suppliers: { name: string } | null
+  suppliers: { name: string }[] | null
 }
 
 interface Bid {
@@ -476,7 +476,7 @@ export default function TenderDetailPage() {
     if (error) { toast('Failed to update category.', 'error'); return }
     const cat = categories.find(c => c.id === categoryId) ?? null
     setTender(prev => prev
-      ? { ...prev, category_id: categoryId || null, tender_categories: cat ? { id: cat.id, name: cat.name } : null }
+      ? { ...prev, category_id: categoryId || null, tender_categories: cat ? [{ id: cat.id, name: cat.name }] : null }
       : prev)
     toast('Category updated.')
   }
@@ -651,7 +651,7 @@ export default function TenderDetailPage() {
               <tbody>
                 {requests.map((r, i) => (
                   <tr key={r.id} className={i !== requests.length - 1 ? 'border-b border-[#334155]/50' : ''}>
-                    <td className="px-3 py-2 font-medium">{r.suppliers?.name ?? '—'}</td>
+                    <td className="px-3 py-2 font-medium">{r.suppliers?.[0]?.name ?? '—'}</td>
                     <td className="px-3 py-2 text-slate-400">{formatDate(r.sent_at)}</td>
                     <td className="px-3 py-2">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${REQUEST_STATUS_BADGE[r.response_status]}`}>
