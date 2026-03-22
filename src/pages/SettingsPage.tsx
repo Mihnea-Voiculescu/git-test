@@ -332,14 +332,10 @@ export default function SettingsPage() {
 
       {/* ── Webhook Configuration ─────────────────────────────────────────── */}
       <Section title="Webhook Configuration" icon={<Webhook size={16} />}>
-        <div className="space-y-4 px-6 py-5">
+        <div className="space-y-5 px-6 py-5">
           <p className="text-sm text-slate-400 leading-relaxed">
-            Configure this URL in your <span className="font-medium text-slate-300">n8n workflow</span> to send tender data to LicitApp.
-            POST JSON with fields: <code className="rounded bg-slate-700/50 px-1.5 py-0.5 text-xs font-mono text-slate-300">external_id</code>,{' '}
-            <code className="rounded bg-slate-700/50 px-1.5 py-0.5 text-xs font-mono text-slate-300">title</code>,{' '}
-            <code className="rounded bg-slate-700/50 px-1.5 py-0.5 text-xs font-mono text-slate-300">description</code>,{' '}
-            <code className="rounded bg-slate-700/50 px-1.5 py-0.5 text-xs font-mono text-slate-300">contracting_authority</code>,{' '}
-            <code className="rounded bg-slate-700/50 px-1.5 py-0.5 text-xs font-mono text-slate-300">deadline</code>.
+            Configure this URL in your <span className="font-medium text-slate-300">n8n workflow</span> to push SEAP notices into LicitApp.
+            The function accepts a <strong className="text-slate-300">single object</strong> or an <strong className="text-slate-300">array</strong> of SEAP notice objects and upserts on <code className="rounded bg-slate-700/50 px-1 py-0.5 text-xs font-mono text-slate-300">noticeNo</code> (external_id).
           </p>
 
           {/* Webhook URL */}
@@ -355,7 +351,7 @@ export default function SettingsPage() {
 
           {/* API Key */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">API Key</label>
+            <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">API Key Header</label>
             <div className="flex items-center gap-2">
               <div className="flex flex-1 items-center gap-2 rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2">
                 <Lock size={12} className="shrink-0 text-slate-600" />
@@ -363,6 +359,49 @@ export default function SettingsPage() {
               </div>
               <CopyButton value="placeholder-api-key" />
             </div>
+            <p className="text-xs text-slate-600">Send as header: <code className="font-mono">x-api-key: &lt;value&gt;</code></p>
+          </div>
+
+          {/* Field mapping */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">SEAP → LicitApp Field Mapping</label>
+            <div className="overflow-x-auto rounded-md border border-[#334155] bg-[#0f172a]">
+              <table className="w-full text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-[#334155]">
+                    <th className="px-4 py-2 text-left text-slate-500">SEAP field</th>
+                    <th className="px-4 py-2 text-left text-slate-500">tenders column</th>
+                    <th className="px-4 py-2 text-left text-slate-500">notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#334155]/50">
+                  {[
+                    ['noticeNo',                     'external_id',           'required — skip if missing'],
+                    ['contractTitle',                 'title',                 'required — skip if missing'],
+                    ['contractTitle (first 500 ch)', 'description',           'reused from title'],
+                    ['contractingAuthorityNameAndFN', 'contracting_authority', ''],
+                    ['ronContractValue',              'estimated_value',       'numeric, can be 0'],
+                    ['currencyCode',                  'currency',              'default RON'],
+                    ['cpvCodeAndName',                'cpv_code',              ''],
+                    ['maxTenderReceiptDeadline',       'deadline',             'null → noticeStateDate + 30d'],
+                    ['noticeStateDate',               'publication_date',      ''],
+                    ['(full object)',                 'raw_data',              'entire SEAP JSON preserved'],
+                  ].map(([seap, col, note]) => (
+                    <tr key={seap}>
+                      <td className="px-4 py-1.5 text-blue-400">{seap}</td>
+                      <td className="px-4 py-1.5 text-emerald-400">{col}</td>
+                      <td className="px-4 py-1.5 text-slate-600">{note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Response format */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium uppercase tracking-wide text-slate-500">Response Format</label>
+            <pre className="overflow-x-auto rounded-md border border-[#334155] bg-[#0f172a] px-4 py-3 text-xs text-slate-300">{`{ "processed": 3, "created": 2, "updated": 1, "skipped": 0, "errors": [] }`}</pre>
           </div>
         </div>
       </Section>
