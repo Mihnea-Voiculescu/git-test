@@ -18,6 +18,7 @@ interface Profile {
   id: string
   full_name: string | null
   role: UserRole
+  email: string
   created_at: string
 }
 
@@ -134,10 +135,7 @@ export default function SettingsPage() {
     async function load() {
       setLoading(true); setError(null)
       try {
-        const { data, error: qErr } = await supabase
-          .from('profiles')
-          .select('id, full_name, role, created_at')
-          .order('created_at')
+        const { data, error: qErr } = await supabase.rpc('get_users_with_email')
         if (qErr) throw qErr
         setProfiles((data as Profile[]) ?? [])
       } catch (e) {
@@ -221,7 +219,7 @@ export default function SettingsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#334155] bg-[#0f172a]/60">
-                  {['Name', 'Role', 'Member Since', 'Change Role'].map(h => (
+                  {['Name', 'Email', 'Role', 'Member Since', 'Change Role'].map(h => (
                     <th key={h} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                   ))}
                 </tr>
@@ -247,6 +245,7 @@ export default function SettingsPage() {
                           )}
                         </div>
                       </td>
+                      <td className="px-6 py-3.5 text-slate-400">{p.email}</td>
                       <td className="px-6 py-3.5">
                         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_BADGE[p.role]}`}>
                           {p.role}
