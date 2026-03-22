@@ -1,15 +1,22 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import AppLayout from './components/AppLayout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import TendersPage from './pages/TendersPage'
+import SuppliersPage from './pages/SuppliersPage'
+import BidsPage from './pages/BidsPage'
+import CategoriesPage from './pages/CategoriesPage'
+import FeatureRequestsPage from './pages/FeatureRequestsPage'
+import SettingsPage from './pages/SettingsPage'
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedLayout() {
   const { session, loading } = useAuth()
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground text-sm">Se încarcă...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       </div>
     )
   }
@@ -18,7 +25,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />
   }
 
-  return <>{children}</>
+  return <AppLayout />
 }
 
 function AppRoutes() {
@@ -27,7 +34,7 @@ function AppRoutes() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground text-sm">Se încarcă...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       </div>
     )
   }
@@ -38,14 +45,15 @@ function AppRoutes() {
         path="/login"
         element={session ? <Navigate to="/" replace /> : <LoginPage />}
       />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route element={<ProtectedLayout />}>
+        <Route path="/"                 element={<DashboardPage />} />
+        <Route path="/tenders"          element={<TendersPage />} />
+        <Route path="/suppliers"        element={<SuppliersPage />} />
+        <Route path="/bids"             element={<BidsPage />} />
+        <Route path="/categories"       element={<CategoriesPage />} />
+        <Route path="/feature-requests" element={<FeatureRequestsPage />} />
+        <Route path="/settings"         element={<SettingsPage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
