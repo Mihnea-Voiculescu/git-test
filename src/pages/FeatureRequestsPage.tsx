@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus, X, Loader2, Lightbulb, Mic, MicOff } from 'lucide-react'
+import { Plus, X, Loader2, Lightbulb, Mic, MicOff, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toaster'
@@ -240,13 +240,15 @@ function RequestForm({ defaultValues, onSubmit, onCancel, saving, showStatus, cu
 // DetailModal
 // =============================================================================
 
-function DetailModal({ request, onClose, onSave, saving }: {
-  request: FeatureRequest
-  onClose: () => void
-  onSave:  (data: FormData & { status?: Status }) => void
-  saving:  boolean
+function DetailModal({ request, onClose, onSave, onDelete, saving }: {
+  request:  FeatureRequest
+  onClose:  () => void
+  onSave:   (data: FormData & { status?: Status }) => void
+  onDelete: () => void
+  saving:   boolean
 }) {
   const [editing, setEditing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   if (editing) {
     return (
@@ -285,11 +287,33 @@ function DetailModal({ request, onClose, onSave, saving }: {
         </div>
       </div>
 
-      <div className="flex justify-end border-t border-[#334155] px-6 py-4">
-        <button onClick={() => setEditing(true)}
-          className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600">
-          Edit
-        </button>
+      <div className="flex items-center justify-between border-t border-[#334155] px-6 py-4">
+        {confirmDelete ? (
+          <>
+            <span className="text-sm text-slate-400">Delete this request?</span>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDelete(false)}
+                className="rounded-md border border-[#334155] px-3 py-1.5 text-sm text-slate-400 transition hover:border-slate-500 hover:text-white">
+                Cancel
+              </button>
+              <button onClick={onDelete} disabled={saving}
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50">
+                {saving ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <button onClick={() => setConfirmDelete(true)}
+              className="flex items-center gap-1.5 rounded-md border border-[#334155] px-3 py-1.5 text-sm text-slate-400 transition hover:border-red-500/50 hover:text-red-400">
+              <Trash2 size={13} /> Delete
+            </button>
+            <button onClick={() => setEditing(true)}
+              className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600">
+              Edit
+            </button>
+          </>
+        )}
       </div>
     </Modal>
   )
@@ -601,6 +625,17 @@ export default function FeatureRequestsPage() {
     toast('Request added.')
   }
 
+  async function handleDelete() {
+    if (!detail) return
+    setSaving(true)
+    const { error } = await supabase.from('feature_requests').delete().eq('id', detail.id)
+    setSaving(false)
+    if (error) { toast('Failed to delete request.', 'error'); return }
+    setRequests(prev => prev.filter(r => r.id !== detail.id))
+    setDetail(null)
+    toast('Request deleted.')
+  }
+
   async function handleEdit(data: FormData & { status?: Status }) {
     if (!detail) return
     setSaving(true)
@@ -691,6 +726,7 @@ export default function FeatureRequestsPage() {
           request={detail}
           onClose={() => setDetail(null)}
           onSave={handleEdit}
+          onDelete={handleDelete}
           saving={saving}
         />
       )}

@@ -344,6 +344,11 @@ create policy "operator: update own feature_requests"
   using (auth_role() = 'operator' and requested_by = auth.uid())
   with check (auth_role() = 'operator');
 
+-- Operators: delete own
+create policy "operator: delete own feature_requests"
+  on feature_requests for delete
+  using (auth_role() = 'operator' and requested_by = auth.uid());
+
 -- Viewers: read all + insert + update own
 create policy "viewer: select feature_requests"
   on feature_requests for select
@@ -357,3 +362,8 @@ create policy "viewer: update own feature_requests"
   on feature_requests for update
   using (auth_role() = 'viewer' and requested_by = auth.uid())
   with check (auth_role() = 'viewer');
+
+-- Viewers: delete own
+create policy "viewer: delete own feature_requests"
+  on feature_requests for delete
+  using (auth_role() = 'viewer' and requested_by = auth.uid());
