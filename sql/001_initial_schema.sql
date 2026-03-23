@@ -343,3 +343,17 @@ create policy "operator: update own feature_requests"
   on feature_requests for update
   using (auth_role() = 'operator' and requested_by = auth.uid())
   with check (auth_role() = 'operator');
+
+-- Viewers: read all + insert + update own
+create policy "viewer: select feature_requests"
+  on feature_requests for select
+  using (auth_role() = 'viewer');
+
+create policy "viewer: insert feature_requests"
+  on feature_requests for insert
+  with check (auth_role() = 'viewer');
+
+create policy "viewer: update own feature_requests"
+  on feature_requests for update
+  using (auth_role() = 'viewer' and requested_by = auth.uid())
+  with check (auth_role() = 'viewer');

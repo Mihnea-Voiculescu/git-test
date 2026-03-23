@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus, X, Loader2, Lightbulb } from 'lucide-react'
+import { Plus, X, Loader2, Lightbulb, Mic, MicOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toaster'
@@ -97,12 +97,14 @@ function Modal({ title, onClose, children }: {
 // RequestForm
 // =============================================================================
 
-function RequestForm({ defaultValues, onSubmit, onCancel, saving, isAdmin, showStatus, currentStatus }: {
+const hasSpeechRecognition = typeof window !== 'undefined' &&
+  ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)
+
+function RequestForm({ defaultValues, onSubmit, onCancel, saving, showStatus, currentStatus }: {
   defaultValues:  FormData
   onSubmit:       (data: FormData & { status?: Status }) => void
   onCancel:       () => void
   saving:         boolean
-  isAdmin:        boolean
   showStatus?:    boolean
   currentStatus?: Status
 }) {
@@ -110,12 +112,45 @@ function RequestForm({ defaultValues, onSubmit, onCancel, saving, isAdmin, showS
     ...defaultValues,
     status: currentStatus ?? 'idea',
   })
+  const [recording, setRecording] = useState(false)
+  const recognitionRef = useRef<any>(null)
   const titleRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { titleRef.current?.focus() }, [])
 
+  useEffect(() => {
+    return () => { recognitionRef.current?.stop() }
+  }, [])
+
   const set = <K extends keyof typeof form>(key: K, value: typeof form[K]) =>
     setForm(prev => ({ ...prev, [key]: value }))
+
+  function toggleRecording() {
+    if (recording) {
+      recognitionRef.current?.stop()
+      return
+    }
+    const SpeechRecognition = (window as any).webkitSpeechRecognition ?? (window as any).SpeechRecognition
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'ro-RO'
+    recognition.continuous = true
+    recognition.interimResults = false
+    recognition.onresult = (e: any) => {
+      const transcript = Array.from(e.results as any[])
+        .slice(e.resultIndex)
+        .map((r: any) => r[0].transcript)
+        .join('')
+      setForm(prev => ({
+        ...prev,
+        description: prev.description ? prev.description + ' ' + transcript : transcript,
+      }))
+    }
+    recognition.onend = () => setRecording(false)
+    recognition.onerror = () => setRecording(false)
+    recognitionRef.current = recognition
+    recognition.start()
+    setRecording(true)
+  }
 
   return (
     <div>
@@ -134,29 +169,45 @@ function RequestForm({ defaultValues, onSubmit, onCancel, saving, isAdmin, showS
 
         <div className="space-y-1.5">
           <label className={LABEL_CLS}>Description</label>
-          <textarea
-            value={form.description}
-            onChange={e => set('description', e.target.value)}
-            rows={4}
-            placeholder="More details, use case, or context…"
-            className={TEXTAREA_CLS}
-          />
+          <div className="relative">
+            <textarea
+              value={form.description}
+              onChange={e => set('description', e.target.value)}
+              rows={4}
+              placeholder="More details, use case, or context…"
+              className={`${TEXTAREA_CLS} ${hasSpeechRecognition ? 'pr-9' : ''}`}
+            />
+            {hasSpeechRecognition && (
+              <button
+                type="button"
+                onClick={toggleRecording}
+                className={[
+                  'absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md transition',
+                  recording
+                    ? 'text-red-500 animate-pulse'
+                    : 'text-slate-500 hover:text-slate-300',
+                ].join(' ')}
+                title={recording ? 'Stop recording' : 'Dictate description'}
+              >
+                {recording ? <MicOff size={14} /> : <Mic size={14} />}
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className={`grid gap-3 ${showStatus && isAdmin ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <div className={`grid gap-3 ${showStatus ? 'grid-cols-2' : 'grid-cols-1'}`}>
           <div className="space-y-1.5">
             <label className={LABEL_CLS}>Priority</label>
             <select
               value={form.priority}
               onChange={e => set('priority', e.target.value as Priority)}
-              disabled={!isAdmin}
-              className={`${SELECT_CLS} disabled:opacity-50`}
+              className={SELECT_CLS}
             >
               {ALL_PRIORITIES.map(p => <option key={p} value={p}>{capitalize(p)}</option>)}
             </select>
           </div>
 
-          {showStatus && isAdmin && (
+          {showStatus && (
             <div className="space-y-1.5">
               <label className={LABEL_CLS}>Status</label>
               <select
@@ -189,23 +240,21 @@ function RequestForm({ defaultValues, onSubmit, onCancel, saving, isAdmin, showS
 // DetailModal
 // =============================================================================
 
-function DetailModal({ request, isAdmin, onClose, onSave, saving }: {
+function DetailModal({ request, onClose, onSave, saving }: {
   request: FeatureRequest
-  isAdmin: boolean
   onClose: () => void
   onSave:  (data: FormData & { status?: Status }) => void
   saving:  boolean
 }) {
   const [editing, setEditing] = useState(false)
 
-  if (editing && isAdmin) {
+  if (editing) {
     return (
       <Modal title="Edit Request" onClose={onClose}>
         <RequestForm
           defaultValues={{ title: request.title, description: request.description ?? '', priority: request.priority }}
           currentStatus={request.status}
           showStatus
-          isAdmin={isAdmin}
           onSubmit={data => { onSave(data); setEditing(false) }}
           onCancel={() => setEditing(false)}
           saving={saving}
@@ -236,14 +285,12 @@ function DetailModal({ request, isAdmin, onClose, onSave, saving }: {
         </div>
       </div>
 
-      {isAdmin && (
-        <div className="flex justify-end border-t border-[#334155] px-6 py-4">
-          <button onClick={() => setEditing(true)}
-            className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600">
-            Edit
-          </button>
-        </div>
-      )}
+      <div className="flex justify-end border-t border-[#334155] px-6 py-4">
+        <button onClick={() => setEditing(true)}
+          className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600">
+          Edit
+        </button>
+      </div>
     </Modal>
   )
 }
@@ -631,7 +678,6 @@ export default function FeatureRequestsPage() {
         <Modal title="Add Feature Request" onClose={() => setAddOpen(false)}>
           <RequestForm
             defaultValues={DEFAULT_FORM}
-            isAdmin={isAdmin}
             onSubmit={handleAdd}
             onCancel={() => setAddOpen(false)}
             saving={saving}
@@ -643,7 +689,6 @@ export default function FeatureRequestsPage() {
       {detail && (
         <DetailModal
           request={detail}
-          isAdmin={isAdmin}
           onClose={() => setDetail(null)}
           onSave={handleEdit}
           saving={saving}
